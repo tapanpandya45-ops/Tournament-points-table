@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Tournament Scoreboard</title>
+<style>
+  :root {
+    --bg: #f7f7f5;
+    --card: #ffffff;
+    --border: #e5e4e0;
+    --text: #1a1a18;
+    --muted: #888884;
+    --accent: #2563eb;
+    --accent-bg: #eff6ff;
+    --success: #16a34a;
+    --success-bg: #f0fdf4;
+    --danger: #dc2626;
+    --danger-bg: #fef2f2;
+    --radius: 10px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #141413;
+      --card: #1f1f1d;
+      --border: #2e2e2b;
+      --text: #f0efe9;
+      --muted: #6b6b67;
+      --accent: #3b82f6;
+      --accent-bg: #1e3a5f;
+      --success: #4ade80;
+      --success-bg: #052e16;
+      --danger: #f87171;
+      --danger-bg: #3b0000;
+    }
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+  .container { max-width: 680px; margin: 0 auto; padding: 2rem 1rem 4rem; }
+  header { margin-bottom: 2rem; }
+  h1 { font-size: 22px; font-weight: 600; margin-bottom: 4px; display: flex; align-items: center; gap: 8px; }
+  .subtitle { font-size: 13px; color: var(--muted); }
+  .live-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--success); display: inline-block; animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.4; } }
+  .group { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-bottom: 1.25rem; }
+  .group-head { padding: 0.6rem 1rem; background: var(--bg); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px; }
+  .group-name { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); flex: 1; }
+  table { width: 100%; border-collapse: collapse; }
+  th { padding: 0.5rem 1rem; font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid var(--border); text-align: left; }
+  th:not(:first-child) { text-align: center; }
+  td { padding: 0.65rem 1rem; font-size: 14px; border-bottom: 1px solid var(--border); }
+  tr:last-child td { border-bottom: none; }
+  td:not(:first-child) { text-align: center; }
+  .player-name { font-weight: 500; display: flex; align-items: center; gap: 6px; }
+  .pts-val { font-weight: 600; color: var(--accent); }
+  .pts-zero { color: var(--muted); }
+  .leader-row { background: var(--success-bg); }
+  .leader-row .pts-val { color: var(--success); }
+  .trophy { font-size: 13px; }
+  .btn { border: 1px solid var(--border); background: var(--card); color: var(--text); border-radius: 6px; padding: 4px 10px; font-size: 12px; cursor: pointer; transition: background 0.15s; }
+  .btn:hover { background: var(--bg); }
+  .btn-primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .btn-primary:hover { opacity: 0.9; background: var(--accent); }
+  .btn-danger { border-color: var(--danger); color: var(--danger); background: none; }
+  .btn-danger:hover { background: var(--danger-bg); }
+  .num-input { width: 60px; border: 1px solid var(--accent); border-radius: 6px; padding: 4px 8px; font-size: 14px; text-align: center; background: var(--card); color: var(--text); }
+  .actions { display: flex; gap: 8px; margin-top: 0.75rem; flex-wrap: wrap; }
+  .btn-add { flex: 1; min-width: 140px; padding: 0.55rem 1rem; border: 1.5px dashed var(--border); border-radius: var(--radius); background: none; font-size: 13px; color: var(--muted); cursor: pointer; transition: border-color 0.15s, color 0.15s; }
+  .btn-add:hover { border-color: var(--accent); color: var(--accent); }
+  .add-row { display: none; padding: 0.6rem 1rem; border-top: 1px solid var(--border); gap: 8px; align-items: center; flex-wrap: wrap; background: var(--bg); }
+  .add-row.open { display: flex; }
+  .text-input { flex: 1; min-width: 120px; border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; font-size: 14px; background: var(--card); color: var(--text); }
+  .text-input:focus, .num-input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .toast { position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%); background: var(--text); color: var(--bg); padding: 0.5rem 1.25rem; border-radius: 20px; font-size: 13px; opacity: 0; transition: opacity 0.25s; pointer-events: none; z-index: 999; white-space: nowrap; }
+  .toast.show { opacity: 1; }
+  .spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 6px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .status { font-size: 13px; color: var(--muted); margin-bottom: 1rem; min-height: 20px; }
+  .icon { font-size: 14px; }
+  .readonly-banner { background: var(--accent-bg); border: 1px solid var(--accent); border-radius: var(--radius); padding: 0.6rem 1rem; font-size: 13px; color: var(--accent); margin-bottom: 1.25rem; display: flex; align-items: center; gap: 8px; }
+  .share-box { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.75rem 1rem; margin-top: 1.5rem; }
+  .share-box p { font-size: 12px; color: var(--muted); margin-bottom: 0.4rem; }
+  .share-row { display: flex; gap: 8px; }
+  .share-url { flex: 1; border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; font-size: 12px; background: var(--bg); color: var(--text); font-family: monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>🏆 Tournament Scoreboard <span class="live-dot" title="Live"></span></h1>
+    <p class="subtitle">Live scores · edit by clicking the pencil icon</p>
+  </header>
+  <div id="readonly-banner" class="readonly-banner" style="display:none">👁 View-only mode — scores update live</div>
+  <div class="status" id="status">Loading…</div>
+  <div id="board"></div>
+  <div class="actions" id="edit-actions">
+    <button class="btn-add" onclick="toggleAddGroup()">+ Add group</button>
+  </div>
+  <div class="add-row" id="add-group-row">
+    <input class="text-input" id="new-group-name" placeholder="Group name (e.g. Group C)" />
+    <button class="btn btn-primary" onclick="addGroup()">Add</button>
+    <button class="btn" onclick="toggleAddGroup()">Cancel</button>
+  </div>
+  <div class="share-box" id="share-box" style="display:none">
+    <p>🔗 Share this read-only link with viewers</p>
+    <div class="share-row">
+      <input class="share-url" id="share-url-input" readonly />
+      <button class="btn btn-primary" onclick="copyShareLink()">Copy</button>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+// ── CONFIG ──────────────────────────────────────────────────────────────
+// Uses JSONBin.io as a free, no-auth-required JSON store.
+// Each scoreboard gets its own bin. The bin ID is stored in the URL hash
+// so sharing the link shares the data automatically.
+// ────────────────────────────────────────────────────────────────────────
+
+const JSONBIN_BASE = 'https://api.jsonbin.io/v3';
+// Public read/write key (rate-limited, fine for a small tournament)
+const API_KEY = '$2a$10$placeholder'; // replaced at runtime if needed
+
+const DEFAULT_DATA = {
+  groups: [
+    { id: 'g1', name: 'Group A', players: [
+      { id: 'p1', name: 'Harshit', matches: 1, points: 2 },
+      { id: 'p2', name: 'Abhi',    matches: 0, points: 0 },
+      { id: 'p3', name: 'Vishal',  matches: 0, points: 0 },
+      { id: 'p4', name: 'Darji',   matches: 1, points: 0 },
+    ]},
+    { id: 'g2', name: 'Group B', players: [
+      { id: 'p5', name: 'Karan', matches: 0, points: 0 },
+      { id: 'p6', name: 'Mann',  matches: 0, points: 0 },
+      { id: 'p7', name: 'Sahil', matches: 0, points: 0 },
+      { id: 'p8', name: 'Soham', matches: 0, points: 0 },
+    ]},
+  ]
+};
+
+// ── STATE ────────────────────────────────────────────────────────────────
+let data = null;
+let binId = null;
+let editing = {};
+let pollTimer = null;
+let lastEtag = null;
+const READONLY = new URLSearchParams(location.search).get('view') === '1';
+
+// ── STORAGE via JSONBin ──────────────────────────────────────────────────
+async function createBin(payload) {
+  const res = await fetch(`${JSONBIN_BASE}/b`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Bin-Private': 'false' },
+    body: JSON.stringify(payload)
+  });
+  if (!res.ok) throw new Error('Failed to create bin');
+  const json = await res.json();
+  return json.metadata.id;
+}
+
+async function readBin(id) {
+  const res = await fetch(`${JSONBIN_BASE}/b/${id}/latest`);
+  if (!res.ok) throw new Error('Failed to read bin');
+  const json = await res.json();
+  return json.record;
+}
+
+async function writeBin(id, payload) {
+  const res = await fetch(`${JSONBIN_BASE}/b/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+  if (!res.ok) throw new Error('Failed to write bin');
+}
+
+// ── INIT ─────────────────────────────────────────────────────────────────
+async function init() {
+  setStatus('<span class="spinner"></span> Connecting…');
+
+  // Try to get bin ID from URL hash
+  const hash = location.hash.replace('#', '');
+  if (hash && hash.startsWith('bin-')) {
+    binId = hash.replace('bin-', '');
+    try {
+      data = await readBin(binId);
+      setStatus('');
+      render();
+      startPolling();
+      if (!READONLY) { const sb = document.getElementById('share-box'); sb.style.display='block'; document.getElementById('share-url-input').value = location.href.split('?')[0] + '?view=1' + location.hash; }
+      return;
+    } catch(e) {
+      setStatus('⚠️ Could not load scoreboard. Starting fresh.');
+    }
+  }
+
+  // No bin yet — create one
+  try {
+    data = JSON.parse(JSON.stringify(DEFAULT_DATA));
+    binId = await createBin(data);
+    location.hash = 'bin-' + binId;
+    setStatus('');
+    render();
+    startPolling();
+    showToast('Scoreboard created! Share this URL.');
+    if (!READONLY) { const sb = document.getElementById('share-box'); sb.style.display='block'; document.getElementById('share-url-input').value = location.href.split('?')[0] + '?view=1' + location.hash; }
+  } catch(e) {
+    // JSONBin may be blocked — fall back to localStorage for offline use
+    setStatus('⚠️ Could not connect to cloud. Using local storage only.');
+    const local = localStorage.getItem('scoreboard');
+    data = local ? JSON.parse(local) : JSON.parse(JSON.stringify(DEFAULT_DATA));
+    binId = null;
+    render();
+  }
+}
+
+function setStatus(html) {
+  document.getElementById('status').innerHTML = html;
+}
+
+async function save() {
+  if (binId) {
+    try {
+      await writeBin(binId, data);
+      showToast('Saved ✓');
+    } catch(e) { showToast('Save failed'); }
+  } else {
+    localStorage.setItem('scoreboard', JSON.stringify(data));
+    showToast('Saved locally');
+  }
+}
+
+function startPolling() {
+  clearInterval(pollTimer);
+  pollTimer = setInterval(async () => {
+    if (!binId || Object.keys(editing).length > 0) return;
+    try {
+      const fresh = await readBin(binId);
+      if (JSON.stringify(fresh) !== JSON.stringify(data)) {
+        data = fresh;
+        render();
+      }
+    } catch(e) {}
+  }, 5000);
+}
+
+// ── RENDER ────────────────────────────────────────────────────────────────
+function uid() { return 'id' + Math.random().toString(36).slice(2, 8); }
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function render() {
+  const board = document.getElementById('board');
+  board.innerHTML = '';
+  data.groups.forEach(group => {
+    const sorted = [...group.players].sort((a,b) => b.points - a.points);
+    const leader = sorted[0];
+    const div = document.createElement('div');
+    div.className = 'group';
+    const rows = group.players.map(p => {
+      const eKey = group.id + '_' + p.id;
+      const isLeader = p.id === leader?.id && (leader?.points ?? 0) > 0;
+      if (editing[eKey]) {
+        return `<tr>
+          <td class="player-name">${esc(p.name)}</td>
+          <td><input class="num-input" id="m_${eKey}" type="number" min="0" value="${p.matches}" onkeydown="if(event.key==='Enter')savePlayer('${group.id}','${p.id}')"/></td>
+          <td><input class="num-input" id="pt_${eKey}" type="number" min="0" value="${p.points}" onkeydown="if(event.key==='Enter')savePlayer('${group.id}','${p.id}')"/></td>
+          <td style="display:flex;gap:4px;justify-content:center">
+            <button class="btn btn-primary" onclick="savePlayer('${group.id}','${p.id}')">Save</button>
+            <button class="btn" onclick="cancelEdit('${group.id}','${p.id}')">✕</button>
+          </td>
+        </tr>`;
+      }
+      return `<tr class="${isLeader ? 'leader-row' : ''}">
+        <td><div class="player-name">${isLeader ? '<span class="trophy">🏆</span>' : ''} ${esc(p.name)}</div></td>
+        <td>${p.matches}</td>
+        <td class="${p.points > 0 ? 'pts-val' : 'pts-zero'}">${p.points}</td>
+        ${READONLY ? '' : `<td style="display:flex;gap:4px;justify-content:center">
+          <button class="btn" title="Edit" onclick="startEdit('${group.id}','${p.id}')">✏️</button>
+          <button class="btn btn-danger" title="Remove" onclick="removePlayer('${group.id}','${p.id}')">🗑</button>
+        </td>`}
+      </tr>`;
+    }).join('');
+
+    div.innerHTML = `
+      <div class="group-head">
+        <span class="group-name">${esc(group.name)}</span>
+        ${READONLY ? '' : `<button class="btn" style="font-size:11px" onclick="toggleAddPlayer('${group.id}')">+ Player</button>
+        <button class="btn btn-danger" style="font-size:11px;margin-left:4px" onclick="removeGroup('${group.id}')">Remove group</button>`}
+      </div>
+      <table>
+        <thead><tr><th>Player</th><th>Matches</th><th>Points</th>${READONLY ? '' : '<th>Actions</th>'}</tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+      ${READONLY ? '' : `<div class="add-row" id="add-player-${group.id}">
+        <input class="text-input" id="new-player-${group.id}" placeholder="Player name" style="max-width:180px" onkeydown="if(event.key==='Enter')addPlayer('${group.id}')"/>
+        <button class="btn btn-primary" onclick="addPlayer('${group.id}')">Add</button>
+        <button class="btn" onclick="toggleAddPlayer('${group.id}')">Cancel</button>
+      </div>`}`;
+    board.appendChild(div);
+  });
+}
+
+// ── ACTIONS ───────────────────────────────────────────────────────────────
+function startEdit(gid, pid) {
+  editing[gid + '_' + pid] = true;
+  render();
+  setTimeout(() => { const el = document.getElementById('pt_' + gid + '_' + pid); if(el) el.focus(); }, 0);
+}
+function cancelEdit(gid, pid) { delete editing[gid + '_' + pid]; render(); }
+
+function savePlayer(gid, pid) {
+  const eKey = gid + '_' + pid;
+  const g = data.groups.find(g => g.id === gid);
+  const p = g.players.find(p => p.id === pid);
+  p.matches = Math.max(0, parseInt(document.getElementById('m_' + eKey)?.value) || 0);
+  p.points  = Math.max(0, parseInt(document.getElementById('pt_' + eKey)?.value) || 0);
+  delete editing[eKey];
+  render();
+  save();
+}
+
+function removePlayer(gid, pid) {
+  if (!confirm('Remove this player?')) return;
+  const g = data.groups.find(g => g.id === gid);
+  g.players = g.players.filter(p => p.id !== pid);
+  render(); save();
+}
+
+function removeGroup(gid) {
+  if (!confirm('Remove this entire group?')) return;
+  data.groups = data.groups.filter(g => g.id !== gid);
+  render(); save();
+}
+
+function toggleAddPlayer(gid) {
+  const el = document.getElementById('add-player-' + gid);
+  el.classList.toggle('open');
+  if (el.classList.contains('open')) setTimeout(() => document.getElementById('new-player-' + gid).focus(), 0);
+}
+
+function addPlayer(gid) {
+  const inp = document.getElementById('new-player-' + gid);
+  const name = inp.value.trim();
+  if (!name) return;
+  const g = data.groups.find(g => g.id === gid);
+  g.players.push({ id: uid(), name, matches: 0, points: 0 });
+  inp.value = '';
+  render(); save();
+}
+
+function toggleAddGroup() {
+  const el = document.getElementById('add-group-row');
+  el.classList.toggle('open');
+  if (el.classList.contains('open')) setTimeout(() => document.getElementById('new-group-name').focus(), 0);
+}
+
+function addGroup() {
+  const inp = document.getElementById('new-group-name');
+  const name = inp.value.trim();
+  if (!name) return;
+  data.groups.push({ id: uid(), name, players: [] });
+  inp.value = '';
+  toggleAddGroup();
+  render(); save();
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+function copyShareLink() {
+  const url = document.getElementById('share-url-input').value;
+  navigator.clipboard.writeText(url).then(() => showToast('Link copied!')).catch(() => {
+    document.getElementById('share-url-input').select();
+    document.execCommand('copy');
+    showToast('Link copied!');
+  });
+}
+
+init();
+function applyReadonly() {
+  if (!READONLY) return;
+  document.getElementById('readonly-banner').style.display='flex';
+  document.getElementById('edit-actions').style.display='none';
+}
+applyReadonly();
+</script>
+</body>
+</html>
